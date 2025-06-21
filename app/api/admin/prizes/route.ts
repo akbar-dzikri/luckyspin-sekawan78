@@ -16,7 +16,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, description, quantity } = await request.json();
+    const { name, description, quantity, category } = await request.json();
 
     if (!name || quantity === undefined) {
       return NextResponse.json(
@@ -28,7 +28,8 @@ export async function POST(request: NextRequest) {
     const result = dbOperations.addPrize(
       name,
       description || "",
-      parseInt(quantity)
+      parseInt(quantity),
+      category || 'hadiah'
     );
 
     return NextResponse.json({
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { id, name, description, quantity } = await request.json();
+    const { id, name, description, quantity, category } = await request.json();
 
     if (!id || !name || quantity === undefined) {
       return NextResponse.json(
@@ -60,7 +61,8 @@ export async function PUT(request: NextRequest) {
       parseInt(id),
       name,
       description || "",
-      parseInt(quantity)
+      parseInt(quantity),
+      category || 'hadiah'
     );
 
     return NextResponse.json({

@@ -11,6 +11,7 @@ db.exec(`
     name TEXT NOT NULL,
     description TEXT,
     quantity INTEGER DEFAULT -1,
+    category TEXT DEFAULT 'hadiah' CHECK(category IN ('hadiah', 'zonk')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -40,22 +41,29 @@ const prizeCount = db.prepare("SELECT COUNT(*) as count FROM prizes").get() as {
 };
 if (prizeCount.count === 0) {
   const insertPrize = db.prepare(
-    "INSERT INTO prizes (name, description, quantity) VALUES (?, ?, ?)"
+    "INSERT INTO prizes (name, description, quantity, category) VALUES (?, ?, ?, ?)"
   );
+  // Hadiah kategori
   insertPrize.run(
     "Diskon 10%",
     "Dapatkan diskon 10% untuk pembelian berikutnya",
-    100
+    100,
+    "hadiah"
   );
   insertPrize.run(
     "Gratis Ongkir",
     "Gratis ongkos kirim untuk seluruh Indonesia",
-    50
+    50,
+    "hadiah"
   );
-  insertPrize.run("Pulsa Rp 5.000", "Pulsa senilai Rp 5.000", 30);
-  insertPrize.run("Voucher Rp 25.000", "Voucher belanja senilai Rp 25.000", 20);
-  insertPrize.run("Cashback 15%", "Cashback 15% maksimal Rp 50.000", 15);
-  insertPrize.run("Hadiah Utama", "Smartphone terbaru", 1);
+  insertPrize.run("Pulsa Rp 5.000", "Pulsa senilai Rp 5.000", 30, "hadiah");
+  insertPrize.run("Voucher Rp 25.000", "Voucher belanja senilai Rp 25.000", 20, "hadiah");
+  insertPrize.run("Cashback 15%", "Cashback 15% maksimal Rp 50.000", 15, "hadiah");
+  insertPrize.run("Hadiah Utama", "Smartphone terbaru", 1, "hadiah");
+  
+  // Zonk kategori
+  insertPrize.run("Coba Lagi", "Belum beruntung, silakan coba lagi", -1, "zonk");
+  insertPrize.run("Zonk", "Maaf, Anda belum beruntung kali ini", -1, "zonk");
 }
 
 export default db;
@@ -67,25 +75,26 @@ export const dbOperations = {
     return db.prepare("SELECT * FROM prizes ORDER BY id").all();
   },
 
-  addPrize: (name: string, description: string, quantity: number) => {
+  addPrize: (name: string, description: string, quantity: number, category: 'hadiah' | 'zonk' = 'hadiah') => {
     return db
       .prepare(
-        "INSERT INTO prizes (name, description, quantity) VALUES (?, ?, ?)"
+        "INSERT INTO prizes (name, description, quantity, category) VALUES (?, ?, ?, ?)"
       )
-      .run(name, description, quantity);
+      .run(name, description, quantity, category);
   },
 
   updatePrize: (
     id: number,
     name: string,
     description: string,
-    quantity: number
+    quantity: number,
+    category: 'hadiah' | 'zonk' = 'hadiah'
   ) => {
     return db
       .prepare(
-        "UPDATE prizes SET name = ?, description = ?, quantity = ? WHERE id = ?"
+        "UPDATE prizes SET name = ?, description = ?, quantity = ?, category = ? WHERE id = ?"
       )
-      .run(name, description, quantity, id);
+      .run(name, description, quantity, category, id);
   },
 
   deletePrize: (id: number) => {

@@ -30,34 +30,20 @@ const Wheel = dynamic(
 );
 
 interface Prize {
+  id: number;
+  name: string;
+  description: string;
+  quantity: number;
+  category: "hadiah" | "zonk";
+  created_at: string;
+}
+
+interface WheelPrize {
   option: string;
   style?: {
     backgroundColor?: string;
     textColor?: string;
   };
-}
-
-async function getPrizes(): Promise<Prize[]> {
-  try {
-    const res = await fetch("/api/admin/prizes");
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
-    }
-    const data = await res.json();
-    const prizes = data.prizes || [];
-
-    // Transform database prizes to wheel format
-    return prizes.map((prize: any) => ({
-      option: prize.name,
-      style: {
-        backgroundColor: getRandomColor(),
-        textColor: "#ffffff",
-      },
-    }));
-  } catch (error) {
-    console.error("Failed to fetch prizes:", error);
-    return [];
-  }
 }
 
 // Helper function to generate random colors for wheel segments
@@ -84,45 +70,39 @@ const LuckyWheel = () => {
   const [couponCode, setCouponCode] = useState("");
   const [hasWon, setHasWon] = useState(false);
   const [showWinDialog, setShowWinDialog] = useState(false);
-  const [wonPrize, setWonPrize] = useState<string>("");
+  const [wonPrize, setWonPrize] = useState<Prize | null>(null);
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
   const [prizes, setPrizes] = useState<Prize[]>([]);
+  const [wheelPrizes, setWheelPrizes] = useState<WheelPrize[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loserPrize = "Anda belum beruntung";
+  const fetchPrizes = async () => {
+    try {
+      const response = await fetch("/api/admin/prizes");
+      const data = await response.json();
+      if (data.prizes && Array.isArray(data.prizes)) {
+        // Store original prize data
+        setPrizes(data.prizes);
+
+        // Format for wheel display
+        const formattedPrizes = data.prizes.map((prize: Prize) => ({
+          option: prize.name,
+          style: {
+            backgroundColor:
+              prize.category === "zonk" ? "#ff6b6b" : getRandomColor(),
+            textColor: "white",
+          },
+        }));
+        setWheelPrizes(formattedPrizes);
+      }
+    } catch (error) {
+      console.error("Error fetching prizes:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchPrizes() {
-      try {
-        const fetchedPrizes = await getPrizes();
-        if (fetchedPrizes && fetchedPrizes.length > 0) {
-          setPrizes(fetchedPrizes);
-        } else {
-          // Default prizes if API returns empty or fails
-          setPrizes([
-            { option: "Diskon 10%" },
-            { option: "Gratis Ongkir" },
-            { option: "Pulsa Rp 5.000" },
-            { option: "Voucher Rp 25.000" },
-            { option: "Cashback 15%" },
-            { option: "Hadiah Utama" },
-          ]);
-        }
-      } catch (error) {
-        console.error("Error fetching prizes:", error);
-        // Default prizes on error
-        setPrizes([
-          { option: "Diskon 10%" },
-          { option: "Gratis Ongkir" },
-          { option: "Pulsa Rp 5.000" },
-          { option: "Voucher Rp 25.000" },
-          { option: "Cashback 15%" },
-          { option: "Hadiah Utama" },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchPrizes();
   }, []);
 
@@ -154,10 +134,19 @@ const LuckyWheel = () => {
         return;
       }
 
-      // Start spinning
+      // Find the prize index based on the assigned prize_id from coupon
+      const assignedPrizeIndex = prizes.findIndex(
+        (prize) => prize.id === result.coupon.prize_id
+      );
+
+      if (assignedPrizeIndex === -1) {
+        toast.error("Hadiah tidak ditemukan!");
+        return;
+      }
+
+      // Start spinning with the assigned prize
       setIsSpinning(true);
-      const newPrizeNumber = Math.floor(Math.random() * prizes.length);
-      setPrizeNumber(newPrizeNumber);
+      setPrizeNumber(assignedPrizeIndex);
       setMustSpin(true);
     } catch (error) {
       toast.error("Terjadi kesalahan. Silakan coba lagi.");
@@ -166,7 +155,14 @@ const LuckyWheel = () => {
 
   const handleStopSpinning = async () => {
     setMustSpin(false);
-    const wonPrizeName = prizes[prizeNumber].option;
+    setIsSpinning(false);
+    const selectedPrizeName =
+      wheelPrizes[prizeNumber]?.option || "Unknown Prize";
+    const selectedPrize = prizes.find((p) => p.name === selectedPrizeName);
+
+    if (selectedPrize) {
+      setWonPrize(selectedPrize);
+    }
 
     try {
       const response = await fetch("/api/spin-wheel", {
@@ -177,15 +173,13 @@ const LuckyWheel = () => {
         body: JSON.stringify({
           username,
           couponCode,
-          prizeName: wonPrizeName,
+          prizeName: selectedPrizeName,
         }),
       });
 
       const data = await response.json();
-
       if (data.success) {
         setHasWon(true);
-        setWonPrize(wonPrizeName);
         setShowWinDialog(true);
       } else {
         toast.error(data.message || "Terjadi kesalahan");
@@ -200,7 +194,7 @@ const LuckyWheel = () => {
     setUsername("");
     setCouponCode("");
     setHasWon(false);
-    setWonPrize("");
+    setWonPrize(null);
     setPrizeNumber(0);
     setShowWinDialog(false);
   };
@@ -278,11 +272,11 @@ const LuckyWheel = () => {
 
       {/* Wheel */}
       <div className="relative">
-        {prizes.length > 0 && (
+        {wheelPrizes.length > 0 && (
           <Wheel
             mustStartSpinning={mustSpin}
             prizeNumber={prizeNumber}
-            data={prizes}
+            data={wheelPrizes}
             onStopSpinning={handleStopSpinning}
             backgroundColors={[
               "#FCD34D",
@@ -354,11 +348,13 @@ const LuckyWheel = () => {
           <DialogHeader>
             <DialogTitle
               className={`flex items-center gap-2 text-2xl font-bold ${
-                wonPrize === loserPrize ? "text-blue-600" : "text-green-600"
+                wonPrize?.category === "zonk"
+                  ? "text-blue-600"
+                  : "text-green-600"
               }`}
             >
               <Trophy className="h-6 w-6" />
-              {wonPrize === loserPrize ? "Coba Lagi!" : "Selamat!"}
+              {wonPrize?.category === "zonk" ? "Coba Lagi!" : "Selamat!"}
             </DialogTitle>
             <DialogDescription className="text-center space-y-4">
               <div className="flex justify-center">
@@ -370,19 +366,24 @@ const LuckyWheel = () => {
               <div className="space-y-2">
                 <p className="text-lg font-semibold text-gray-800">
                   <strong>{username}</strong>,{" "}
-                  {wonPrize === loserPrize
+                  {wonPrize?.category === "zonk"
                     ? "silakan coba lagi:"
                     : "Anda memenangkan:"}
                 </p>
                 <p
                   className={`text-xl font-bold p-3 rounded-lg border-2 ${
-                    wonPrize === loserPrize
+                    wonPrize?.category === "zonk"
                       ? "text-blue-600 bg-blue-50 border-blue-200"
                       : "text-orange-600 bg-orange-50 border-orange-200"
                   }`}
                 >
-                  {wonPrize}
+                  {wonPrize?.name}
                 </p>
+                {wonPrize?.description && (
+                  <p className="text-sm text-gray-600 italic">
+                    {wonPrize.description}
+                  </p>
+                )}
               </div>
             </DialogDescription>
           </DialogHeader>
@@ -395,7 +396,7 @@ const LuckyWheel = () => {
             >
               Tutup
             </Button>
-            {wonPrize !== loserPrize && (
+            {wonPrize?.category === "hadiah" && (
               <Button
                 onClick={() => {
                   const currentTime = new Date().toLocaleString("id-ID", {
@@ -406,7 +407,7 @@ const LuckyWheel = () => {
                     hour: "2-digit",
                     minute: "2-digit",
                   });
-                  const message = `Saya (${username}) telah memenangkan ${wonPrize} dari lucky spin sekawan78 pada ${currentTime}`;
+                  const message = `Saya (${username}) telah memenangkan ${wonPrize.name} dari lucky spin sekawan78 pada ${currentTime}`;
                   const whatsappUrl = `https://wa.me/6285589470567?text=${encodeURIComponent(
                     message
                   )}`;

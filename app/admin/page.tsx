@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -30,6 +37,7 @@ interface Prize {
   name: string;
   description: string;
   quantity: number;
+  category: 'hadiah' | 'zonk';
 }
 
 interface Coupon {
@@ -65,6 +73,7 @@ const AdminDashboard = () => {
     name: "",
     description: "",
     quantity: 0,
+    category: "hadiah" as 'hadiah' | 'zonk',
   });
 
   // Coupon form state
@@ -150,7 +159,7 @@ const AdminDashboard = () => {
 
       if (response.ok) {
         toast.success(data.message);
-        setPrizeForm({ id: null, name: "", description: "", quantity: 0 });
+        setPrizeForm({ id: null, name: "", description: "", quantity: 0, category: "hadiah" });
         fetchPrizes();
       } else {
         toast.error(data.error);
@@ -354,6 +363,23 @@ const AdminDashboard = () => {
                       required
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="prizeCategory">Kategori</Label>
+                    <Select
+                      value={prizeForm.category}
+                      onValueChange={(value: 'hadiah' | 'zonk') =>
+                        setPrizeForm({ ...prizeForm, category: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih kategori" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hadiah">Hadiah</SelectItem>
+                        <SelectItem value="zonk">Zonk</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex space-x-2">
                     <Button type="submit" disabled={loading}>
                       {prizeForm.id ? "Update" : "Tambah"}
@@ -368,6 +394,7 @@ const AdminDashboard = () => {
                             name: "",
                             description: "",
                             quantity: 0,
+                            category: "hadiah",
                           })
                         }
                       >
@@ -400,6 +427,13 @@ const AdminDashboard = () => {
                           Qty:{" "}
                           {prize.quantity === -1 ? "Unlimited" : prize.quantity}
                         </p>
+                        <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                          prize.category === 'hadiah' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {prize.category === 'hadiah' ? 'Hadiah' : 'Zonk'}
+                        </span>
                       </div>
                       <div className="flex space-x-2">
                         <Button
@@ -411,6 +445,7 @@ const AdminDashboard = () => {
                               name: prize.name,
                               description: prize.description,
                               quantity: prize.quantity,
+                              category: prize.category,
                             })
                           }
                         >

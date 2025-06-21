@@ -7,6 +7,7 @@ interface Prize {
   name: string;
   description: string;
   quantity: number;
+  category: 'hadiah' | 'zonk';
   created_at: string;
 }
 
@@ -60,10 +61,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Selamat ${username}! Anda memenangkan ${prizeName}`,
+      message: wonPrize.category === 'hadiah' 
+        ? `Selamat ${username}! Anda memenangkan ${prizeName}`
+        : `Maaf ${username}, ${prizeName}. Silakan coba lagi!`,
       prize: {
         name: wonPrize.name,
         description: wonPrize.description,
+        category: wonPrize.category,
       },
     });
   } catch (error) {
