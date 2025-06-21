@@ -408,7 +408,7 @@ const LuckyWheel = () => {
                     minute: "2-digit",
                   });
                   const message = `Saya (${username}) telah memenangkan ${wonPrize.name} dari lucky spin sekawan78 pada ${currentTime}`;
-                  const whatsappUrl = `https://wa.me/6285589470567?text=${encodeURIComponent(
+                  const whatsappUrl = `https://wa.me/85589470567?text=${encodeURIComponent(
                     message
                   )}`;
                   window.open(whatsappUrl, "_blank");
